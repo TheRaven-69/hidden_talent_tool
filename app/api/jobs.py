@@ -7,10 +7,11 @@ from app.models.schemas import (
     Application,
     Candidate,
     Job,
+    PublicJob,
     SuggestSkillsRequest,
     SuggestSkillsResponse,
 )
-from app.services import normalize, search, storage
+from app.services import catalog, normalize, search, storage
 
 router = APIRouter(tags=["jobs"])
 
@@ -30,7 +31,24 @@ def create_job(job: Job):
 
 @router.get("/jobs")
 def list_jobs(q: Optional[str] = None):
-    return search.search_jobs(q) if q else storage.list_all("jobs")
+    if q:
+        return search.search_jobs(q)
+    return [{k: v for k, v in doc.items() if k != "assessment_brief"}
+            for doc in storage.list_all("jobs")]
+
+
+@router.get("/jobs/{job_id}")
+def job_details(job_id: str):
+    """Read vacancy details without starting normalization or writing to Cosmos."""
+    doc = storage.get("jobs", job_id)
+    if doc is not None:
+        fields = ("sector", "source", "source_url", "application_deadline")
+        return {**PublicJob.model_validate(doc).model_dump(),
+                **{key: doc[key] for key in fields if key in doc}}
+    record = search.get_job_document(job_id)
+    if record is None:
+        raise HTTPException(404, "Job not found")
+    return catalog.from_search(record)
 
 
 @router.get("/jobs/{job_id}/candidates")

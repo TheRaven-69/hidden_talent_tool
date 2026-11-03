@@ -3,6 +3,7 @@ from functools import lru_cache
 from typing import Any, Optional
 
 from azure.cosmos import CosmosClient
+from azure.cosmos.exceptions import CosmosResourceExistsError
 from azure.identity import DefaultAzureCredential
 
 from app import config
@@ -29,6 +30,16 @@ def upsert(container: str, item: dict) -> dict:
     if not item.get("partition_key"):
         item["partition_key"] = _partition_key(container)
     return _container(container).upsert_item(item)
+
+
+def create_if_absent(container: str, item: dict) -> bool:
+    """Insert only; never overwrite an employer's existing document."""
+    document = {**item, "partition_key": item.get("partition_key") or _partition_key(container)}
+    try:
+        _container(container).create_item(document)
+        return True
+    except CosmosResourceExistsError:
+        return False
 
 
 def get(container: str, item_id: str) -> Optional[dict]:

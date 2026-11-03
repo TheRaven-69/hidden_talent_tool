@@ -27,7 +27,9 @@ def build_generation_prompt(job: Job, candidate: Candidate, breakdown: list[dict
         f"Question mix: {QUESTION_MIX}\n"
         f"Job skills:\n{skills}\n"
         f"Candidate skills with CV evidence:\n{strip_pii(cv_skills)}\n"
-        f"Must-have skills missing from CV: {must_missing}"
+        f"Must-have skills missing from CV: {must_missing}\n"
+        f"Employer assessment brief (internal assessment guidance):\n"
+        f"{strip_pii(job.assessment_brief.strip()) or 'No additional guidance; use the job skills.'}"
     )
 
 

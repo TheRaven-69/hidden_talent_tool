@@ -5,6 +5,11 @@ An AI-powered tool that helps employers find the right candidate by extracting a
 > **This file is both the team's project guide and the master prompt for AI coding assistants.**
 > When using an AI assistant (Claude Code, Copilot, Cursor, etc.), give it this file first. Section 11 contains rules the assistant must follow.
 
+For the current setup and supported flows, see [RUNNING.md](RUNNING.md). The recommended
+local run uses Docker Compose on port 8080; host Python/Vite remains an optional
+hot-reload workflow. The local image includes Azure CLI for developer sign-in, while
+the default production image uses managed identity without CLI/test tooling.
+
 ---
 
 ## 1. Problem and goal
@@ -304,7 +309,39 @@ Run with `pytest` from the repository root. Frontend tests are out of scope for 
 
 ---
 
-## 14. Out of scope
+## 14. Catalog and recommendations implementation additions
+
+- Jobs optionally store `assessment_brief` (up to 6,000 characters) as internal
+  employer guidance, separate from public `ad_text`. Existing jobs default to an
+  empty brief. Generation uses it to focus questions and write open-answer rubrics;
+  grading then uses those stored rubrics. It does not affect CV matching or gates.
+  Candidate job list/detail and recommendation responses omit the brief. Candidate
+  assessment responses omit `correct` and `rubric`; full data remains stored for
+  grading and the employer dashboard. This demo still has no login/access control.
+
+- `python -m scripts.sync_jobs` previews importing missing Search jobs into Cosmos;
+  `--apply` inserts them without replacing existing jobs. Optional `--metadata`
+  accepts the starter jobs JSON for dates. No Search index writes are required.
+- Imported jobs add `source: "search"`, `sector`, `source_url`, optional dates and
+  `skills_normalized`. Candidate documents can also carry `skills_normalized`.
+  Existing metadata and candidate partition keys are preserved during normalization.
+- `GET /api/candidates` returns fictional profile choices; `POST /api/recommendations`
+  accepts exactly one of `candidate_id` or non-empty `cv_text`.
+- Recommendations use taxonomy labels for hybrid retrieval (five starter jobs),
+  include employer-created Cosmos jobs, then use the existing 70/30 match formula.
+  Return up to three jobs with nonzero skill coverage, per-skill evidence and
+  `meets_score_gate`. This flag is only the current numerical gate, not verified
+  qualifications or the planned critical-requirement feature.
+- Applying resolves a missing Cosmos job from Search and lazily normalizes it.
+  The recommendation itself never creates an application or assessment.
+- `GET /api/jobs/{job_id}` reads vacancy details from Cosmos or falls back to
+  Search without normalization or writes. The application page shows the original
+  description, available skill requirements, the score gate and next steps before
+  submission. A successful submission shows evidence and either the assessment
+  invitation or confirmation that the below-gate application remains for review.
+
+
+## 15. Out of scope
 
 Login and authentication, notifications, multiple employers, complex PDF parsing (plain text extraction is enough), assessment editing, proctoring, frontend tests.
 

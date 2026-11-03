@@ -15,7 +15,7 @@ class JobSkill(BaseModel):
     weight: Weight = "must"
 
 
-class Job(BaseModel):
+class PublicJob(BaseModel):
     id: str
     title: str
     location: str = ""
@@ -23,6 +23,10 @@ class Job(BaseModel):
     skills: list[JobSkill] = []
     gate: float = 0.5
     pass_threshold: float = 0.7
+
+
+class Job(PublicJob):
+    assessment_brief: str = Field(default="", max_length=6000)
 
 
 class CandidateSkill(BaseModel):
@@ -123,3 +127,24 @@ class ApplyRequest(BaseModel):
 
 class SubmitAnswersRequest(BaseModel):
     answers: dict[str, str]  # question_id -> answer
+
+
+class RecommendRequest(BaseModel):
+    candidate_id: Optional[str] = None
+    cv_text: Optional[str] = None
+
+
+class JobRecommendation(BaseModel):
+    job: PublicJob
+    match_score: float
+    coverage: float
+    similarity: float
+    skill_breakdown: list[SkillBreakdownItem]
+    meets_score_gate: bool
+
+
+class RecommendationResponse(BaseModel):
+    candidate_id: str
+    skills: list[CandidateSkill]
+    recommendations: list[JobRecommendation]
+    evaluated_count: int

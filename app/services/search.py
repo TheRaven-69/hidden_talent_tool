@@ -6,11 +6,28 @@ Queries use the SAME embedding model that built the index.
 from functools import lru_cache
 
 from azure.identity import DefaultAzureCredential
+from azure.core.exceptions import ResourceNotFoundError
 from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizedQuery
 
 from app import config
 from app.services import llm
+
+
+def list_job_documents() -> list[dict]:
+    """Read the starter catalog without transferring vectors."""
+    return [dict(r) for r in _client(config.JOBS_INDEX).search(
+        search_text="*", select=["id", "title", "text", "municipality", "sector", "source_url"]
+    )]
+
+
+def get_job_document(job_id: str) -> dict | None:
+    try:
+        return dict(_client(config.JOBS_INDEX).get_document(
+            job_id, selected_fields=["id", "title", "text", "municipality", "sector", "source_url"]
+        ))
+    except ResourceNotFoundError:
+        return None
 
 
 @lru_cache
