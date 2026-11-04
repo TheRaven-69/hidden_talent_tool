@@ -1,7 +1,7 @@
 """Pydantic schemas. Mirror README section 7; tell the team before changing."""
 from typing import Literal, Optional
 
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 Weight = Literal["must", "nice"]
 Confidence = Literal["explicit", "inferred"]
@@ -57,6 +57,9 @@ class Application(BaseModel):
     id: str
     job_id: str
     candidate_id: str
+    full_name: Optional[str] = None
+    submitted_at: Optional[str] = None
+    candidate_snapshot: Optional[Candidate] = None
     match_score: float = 0.0
     coverage: float = 0.0
     similarity: float = 0.0
@@ -81,6 +84,7 @@ class Question(BaseModel):
 class Assessment(BaseModel):
     id: str
     application_id: str
+    completed_at: Optional[str] = None
     questions: list[Question] = []
     total_score: Optional[float] = None
     per_skill: dict[str, float] = {}
@@ -121,8 +125,19 @@ class SuggestSkillsResponse(BaseModel):
 
 class ApplyRequest(BaseModel):
     job_id: str
+    full_name: Optional[str] = Field(default=None, max_length=200)
     candidate_id: Optional[str] = None  # mock profile
     cv_text: Optional[str] = None  # or pasted/extracted CV text
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None  # Existing API clients may omit the name.
+        value = value.strip()
+        if not value:
+            raise ValueError("Full name must not be blank")
+        return value
 
 
 class SubmitAnswersRequest(BaseModel):

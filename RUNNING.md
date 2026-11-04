@@ -106,13 +106,20 @@ Reserve them for intentional reprocessing.
 - **All jobs:** search, sector/location/deadline filters, descriptions, available
   skills and pagination. Numeric recruiter gates and skill weights are hidden in
   candidate views. Jobs without a deadline show no deadline label.
-- **Find matching jobs:** select a fictional candidate or paste fictional text.
-  The backend retrieves five starter jobs using taxonomy skill labels and includes
-  employer-created Cosmos jobs. It scores them using the 70/30 coverage/similarity
-  formula and returns up to three with nonzero skill coverage. This is not an
-  exhaustive ranking of the entire catalog.
-- **Review & apply:** shows the vacancy, requirements and next steps. The profile
-  from recommendations is retained. Submission saves an application; assessment is
+  Keyword search uses the same Cosmos catalog for imported and employer-created
+  jobs, with no 20-result cutoff or embedding call. All query words must match;
+  titles and skills rank ahead of descriptions. It supports Unicode case folding,
+  word prefixes of at least three characters and technical names such as C++/C#.
+  It does not translate keywords or correct spelling. The small demo catalog is
+  read and ranked in the backend; a larger deployment should index all sources
+  together and paginate on the server.
+- **Candidate journey:** browse jobs, choose a vacancy, then submit a fictional CV
+  on its application page. The separate CV recommendations page has been removed;
+  old `/recommendations` URLs redirect to the job catalog. The backend recommendation
+  API remains available but is not part of the candidate UI.
+- **Review & apply:** shows the vacancy, requirements and next steps. Candidates
+  choose a fictional profile or paste CV text here. Submission analyses the match
+  and saves an application; assessment is
   available only when its score meets the employer gate. Below-gate applications
   remain available for employer review. Assessment starts when the candidate chooses.
 - **Employer / Create job:** public description, AI skill suggestions, importance,
@@ -120,8 +127,21 @@ Reserve them for intentional reprocessing.
   assessment brief guides question generation and open-answer rubrics. It is omitted
   from candidate catalog/detail/recommendation responses. The assessment target is
   stored but is not yet applied to results or decisions.
-- Publishing navigates to the employer candidate dashboard. That page shows scores
-  and skill breakdowns. No login, notifications or automatic rejection is implemented.
+- **Applications** (`/employer/applications`): employer inbox with vacancy/status
+  filters, candidate ID search, saved CV evidence, required-skill gaps and assessment
+  scores. **View application** opens `/employer/applications/:applicationId` with
+  CV evidence, individual assessment questions, selected answers and saved score
+  explanations. Missing explanations are labelled explicitly. Publishing opens the inbox filtered
+  to the vacancy. Refresh retrieves new submissions/results.
+- Summaries use stored evidence without an additional LLM call. New applications
+  save a candidate snapshot and submission date; assessment generation uses that
+  snapshot. Legacy applications explicitly show the current profile instead.
+  Completed results take priority over unfinished attempts; multiple completed
+  attempts use completion time (legacy records use Cosmos last-update time).
+- No login, employer ownership isolation, notifications or automatic rejection is
+  implemented. This is a shared synthetic-data demo inbox, not a private employer
+  portal. Reads currently batch the small dataset; pagination and scoped queries
+  are needed before scaling it.
 - Candidate assessment API responses omit correct answers and internal rubrics.
   Full assessment data remains in Cosmos for grading and employer review.
 

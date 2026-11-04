@@ -11,7 +11,7 @@ from app.models.schemas import (
     SuggestSkillsRequest,
     SuggestSkillsResponse,
 )
-from app.services import catalog, normalize, search, storage
+from app.services import catalog, keyword_search, normalize, search, storage
 
 router = APIRouter(tags=["jobs"])
 
@@ -31,10 +31,9 @@ def create_job(job: Job):
 
 @router.get("/jobs")
 def list_jobs(q: Optional[str] = None):
-    if q:
-        return search.search_jobs(q)
-    return [{k: v for k, v in doc.items() if k != "assessment_brief"}
-            for doc in storage.list_all("jobs")]
+    documents = [{k: v for k, v in doc.items() if k != "assessment_brief"}
+                 for doc in storage.list_all("jobs")]
+    return keyword_search.search_catalog(documents, q) if q is not None else documents
 
 
 @router.get("/jobs/{job_id}")
