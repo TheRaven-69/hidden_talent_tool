@@ -7,7 +7,8 @@ from app.services import storage
 router = APIRouter(tags=["assessments"])
 
 
-@router.post("/assessments/{application_id}", response_model=Assessment)
+@router.post("/assessments/{application_id}", response_model=Assessment,
+             response_model_exclude={"questions": {"__all__": {"correct", "rubric"}}})
 def create_assessment(application_id: str):
     app_doc = storage.get("applications", application_id)
     if not app_doc:
@@ -22,7 +23,8 @@ def create_assessment(application_id: str):
     return asm
 
 
-@router.post("/assessments/{assessment_id}/submit", response_model=Assessment)
+@router.post("/assessments/{assessment_id}/submit", response_model=Assessment,
+             response_model_exclude={"questions": {"__all__": {"correct", "rubric"}}})
 def submit(assessment_id: str, req: SubmitAnswersRequest):
     doc = storage.get("assessments", assessment_id)
     if not doc:

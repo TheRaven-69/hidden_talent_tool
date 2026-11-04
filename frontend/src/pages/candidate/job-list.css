@@ -1,0 +1,63 @@
+
+.job-catalog { --line:#d7e1db; --muted:#5c6d68; --accent:#1b5948; }
+.job-catalog * { box-sizing:border-box; }
+.catalog-heading { display:flex; justify-content:space-between; gap:48px; align-items:center; padding:16px 0 30px; }
+.catalog-kicker { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.13em; color:#526c62; }
+.catalog-heading h1 { font-size:clamp(2rem,4vw,3rem); letter-spacing:-.04em; line-height:1.15; margin:15px 0; }
+.catalog-heading > div:first-child > p:last-child { max-width:560px; color:var(--muted); line-height:1.7; }
+.personal-match-callout { flex:0 0 290px; border-left:2px solid #aac3ad; padding-left:24px; }
+.personal-match-callout h2 { font-size:1rem; margin:0 0 10px; }
+.personal-match-callout p { font-size:.85rem; line-height:1.7; color:var(--muted); }
+.personal-match-callout a { font-size:.85rem; font-weight:650; }
+.catalog-search { padding:24px 28px; background:#eaf0e6; border:1px solid #cddbc9; border-radius:8px; margin-bottom:32px; }
+.catalog-search label { display:block; font-size:.85rem; font-weight:650; margin-bottom:10px; }
+.catalog-search > div { display:flex; gap:12px; }
+.catalog-search input { flex:1; min-width:0; border:1px solid #a5b9a7; border-radius:5px; padding:14px; background:white; font-size:1rem; color:#173b35; }
+.job-catalog button { font:inherit; cursor:pointer; }
+.catalog-search button,.vacancy-actions a,.catalog-empty button { border:1px solid var(--accent); border-radius:5px; background:var(--accent); color:white; padding:12px 18px; font-size:.85rem; font-weight:600; text-decoration:none; min-height:44px; }
+.catalog-search button:hover,.vacancy-actions a:hover,.catalog-empty button:hover { background:#103e32; }
+.catalog-search > p { color:var(--muted); font-size:.75rem; line-height:1.6; margin:12px 0 0; }
+.job-catalog button:disabled { opacity:.5; cursor:not-allowed; }
+.catalog-layout { display:grid; grid-template-columns:235px minmax(0,1fr); gap:32px; align-items:start; }
+.catalog-filters { padding-right:24px; border-right:1px solid var(--line); }
+.filter-heading { display:flex; align-items:center; gap:12px; justify-content:space-between; }
+.filter-heading h2 { font-size:.95rem; margin:0; }
+.filter-heading button,.clear-query { border:0; padding:10px 0; color:var(--accent); background:none; font-size:.75rem; text-decoration:underline; text-underline-offset:4px; }
+.catalog-filters label { display:block; font-size:.8rem; font-weight:650; margin:24px 0 10px; }
+.catalog-filters select { width:100%; min-width:0; padding:12px 8px; border:1px solid #a9bdae; border-radius:5px; color:#173b35; font-size:1rem; background:white; }
+.catalog-data-note { font-size:.75rem; line-height:1.8; color:var(--muted); border-top:1px solid var(--line); padding-top:20px; margin-top:24px; }
+.catalog-data-note strong { display:block; color:#173b35; margin-bottom:8px; }
+.catalog-results-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; }
+.catalog-results-heading h2 { font-size:1.3rem; letter-spacing:-.02em; margin:0 0 8px; overflow-wrap:anywhere; }
+.catalog-results-heading p { color:var(--muted); font-size:.85rem; margin:0; }
+.search-scope { font-size:.8rem; color:var(--muted); line-height:1.7; margin-bottom:22px; }
+.vacancy-row { background:white; border:1px solid var(--line); padding:26px; margin-bottom:18px; border-radius:7px; }
+.vacancy-meta { display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; color:var(--muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.07em; }
+.vacancy-meta span:first-child { color:#396344; font-weight:650; }
+.vacancy-row h3 { font-size:1.3rem; letter-spacing:-.02em; line-height:1.4; margin:17px 0 8px; overflow-wrap:anywhere; }
+.vacancy-location { font-size:.85rem; color:var(--muted); margin:0 0 16px; }
+.vacancy-excerpt { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; font-size:.9rem; line-height:1.7; color:#4b6056; }
+.vacancy-skills { display:flex; gap:7px; flex-wrap:wrap; margin:18px 0; }
+.vacancy-skills span { border:1px solid #d9e3d7; background:#f3f6ef; padding:5px 9px; border-radius:4px; font-size:.75rem; overflow-wrap:anywhere; }
+.vacancy-facts { display:flex; gap:14px 24px; flex-wrap:wrap; color:var(--muted); font-size:.75rem; line-height:1.6; margin:18px 0; }
+.vacancy-facts .deadline-expired { color:#8a5c27; }
+.vacancy-description { border-top:1px solid var(--line); padding-top:16px; }
+.vacancy-description summary { cursor:pointer; font-size:.8rem; font-weight:600; }
+.vacancy-description > p { white-space:pre-wrap; line-height:1.8; font-size:.85rem; max-height:400px; overflow:auto; overflow-wrap:anywhere; }
+.vacancy-description h4 { font-size:.85rem; }
+.vacancy-description ul { padding-left:20px; font-size:.8rem; line-height:1.9; }
+.catalog-muted { color:var(--muted); }
+.vacancy-actions { margin-top:20px; padding-top:20px; border-top:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:24px; }
+.vacancy-actions > span { color:var(--muted); font-size:.75rem; line-height:1.6; }
+.vacancy-actions a { flex-shrink:0; }
+.catalog-pagination { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin:28px 0 12px; font-size:.8rem; }
+.catalog-pagination button { border:1px solid #a8bbaa; background:white; color:#173b35; border-radius:5px; min-height:44px; padding:10px 14px; }
+.catalog-pagination button:hover:not(:disabled) { background:#eaf0e6; }
+.catalog-empty { padding:32px; background:white; border:1px dashed #b5c6b7; border-radius:7px; }
+.catalog-empty h3 { font-size:1.1rem; }
+.catalog-empty p { font-size:.9rem; color:var(--muted); line-height:1.7; }
+.catalog-error { color:#8b2929; border-left:3px solid #b14040; padding:14px; background:#fff0ed; font-size:.85rem; line-height:1.7; }
+.job-catalog :focus-visible { outline:3px solid #b66d16; outline-offset:4px; }
+@media(max-width:900px) { .catalog-heading { gap:26px; } .personal-match-callout { flex-basis:240px; } .catalog-layout { grid-template-columns:200px minmax(0,1fr); gap:22px; } .catalog-filters { padding-right:18px; } }
+@media(max-width:700px) { .catalog-heading { display:block; } .personal-match-callout { margin-top:24px; } .catalog-layout { grid-template-columns:1fr; gap:26px; } .catalog-filters { display:grid; grid-template-columns:1fr; padding:20px; border:1px solid var(--line); border-radius:6px; } .catalog-filters .catalog-data-note:last-child { display:none; } .catalog-search { padding:20px; } }
+@media(max-width:480px) { .catalog-search > div { flex-direction:column; } .vacancy-row { padding:20px; } .vacancy-actions { flex-direction:column; align-items:stretch; gap:14px; } .vacancy-actions a { text-align:center; } .catalog-pagination { justify-content:center; } .catalog-pagination > span { order:3; width:100%; text-align:center; } }

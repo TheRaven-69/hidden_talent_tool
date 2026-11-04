@@ -10,3 +10,12 @@ frontend/dist/
 frontend/package-lock.json
 .ipynb_checkpoints/
 data/
+
+# Local editor settings, Azure login state and credentials
+.vscode/
+.azure/
+.aws/
+*.pem
+*.pfx
+*.key
+*.log

@@ -5,7 +5,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import applications, assessments, jobs
+from app.api import applications, assessments, jobs, recommendations
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
 
@@ -16,6 +16,7 @@ api = APIRouter(prefix="/api")
 api.include_router(jobs.router)
 api.include_router(applications.router)
 api.include_router(assessments.router)
+api.include_router(recommendations.router)
 app.include_router(api)
 
 # Serve the built React app in production
