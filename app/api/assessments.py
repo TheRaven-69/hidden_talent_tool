@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from datetime import datetime, timezone
 
 from app.models.schemas import Application, Assessment, Candidate, Job, SubmitAnswersRequest
 from app.services import assessment as svc
@@ -17,7 +18,7 @@ def create_assessment(application_id: str):
     if app.status == "below_gate":
         raise HTTPException(403, "Match score is below the employer's gate")
     job = Job.model_validate(storage.get("jobs", app.job_id))
-    candidate = Candidate.model_validate(storage.get("candidates", app.candidate_id))
+    candidate = app.candidate_snapshot or Candidate.model_validate(storage.get("candidates", app.candidate_id))
     asm = svc.generate_assessment(app, job, candidate)
     storage.upsert("assessments", asm.model_dump())
     return asm
@@ -30,6 +31,7 @@ def submit(assessment_id: str, req: SubmitAnswersRequest):
     if not doc:
         raise HTTPException(404, "Assessment not found")
     graded = svc.grade_assessment(Assessment.model_validate(doc), req.answers)
+    graded.completed_at = datetime.now(timezone.utc).isoformat()
     storage.upsert("assessments", graded.model_dump())
     app = storage.get("applications", graded.application_id)
     if app:

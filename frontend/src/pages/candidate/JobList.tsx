@@ -28,7 +28,7 @@ export default function JobList() {
   useEffect(() => {
     let active = true;
     api.listJobs().then(data => { if (active) { setCatalog(data); setJobs(data); setLoaded(true); } })
-      .catch(() => { if (active) setError("Could not load vacancies. Reload this page to try again."); })
+      .catch(() => { if (active) setError("Could not load jobs. Reload this page to try again."); })
       .finally(() => { if (active) setBusy(false); });
     return () => { active = false; sequence.current++; };
   }, []);
@@ -39,12 +39,7 @@ export default function JobList() {
     try {
       let data = catalog;
       if (query) {
-        const hits = await api.listJobs(query);
-        const byId = new Map(catalog.map(j => [j.id, j]));
-        data = hits.map(hit => ({ ...hit, ...byId.get(hit.id) }));
-        const ids = new Set(data.map(j => j.id));
-        const words = query.toLocaleLowerCase().split(/\s+/).filter(Boolean);
-        data = data.concat(catalog.filter(j => j.source !== "search" && !ids.has(j.id) && words.some(word => `${j.title} ${j.ad_text} ${(j.skills || []).map(s => s.label).join(" ")}`.toLocaleLowerCase().includes(word))));
+        data = await api.listJobs(query);
       }
       if (request !== sequence.current) return;
       setJobs(data); setSubmitted(query); setPage(1);
@@ -58,32 +53,59 @@ export default function JobList() {
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, pages);
   const visible = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const hasFilters = Boolean(sector || place || availability);
   const changePage = (next: number) => { setPage(next); resultHeading.current?.focus(); };
   return <div className="job-catalog">
-    <header className="catalog-heading"><div><p className="catalog-kicker">Opportunity directory</p><h1>Explore the work.<br />Find your next direction.</h1><p>Browse roles, understand the requirements and discover where your experience could fit.</p></div><div className="personal-match-callout"><h2>Not sure where to start?</h2><p>Let your experience guide the search. Get recommendations with skill evidence and clear gaps.</p><Link to="/recommendations">Find jobs for my skills →</Link></div></header>
-    <form className="catalog-search" onSubmit={e => { e.preventDefault(); void search(); }}>
-      <label htmlFor="vacancy-query">Search roles or skills</label><div><input id="vacancy-query" value={q} disabled={busy || !loaded} onChange={e => setQ(e.target.value)} placeholder="Try Python, customer service or logistics" /><button type="submit" disabled={busy || !loaded}>{busy ? "Searching…" : "Search vacancies →"}</button></div><p>Search by meaning across the starter catalog. Employer-created roles are also checked for matching words.</p>
-    </form>
-    <div className="catalog-layout"><aside className="catalog-filters" aria-label="Filter vacancies"><div className="filter-heading"><h2>Refine results</h2><button type="button" disabled={busy || !loaded} onClick={() => { setSector(""); setPlace(""); setAvailability(""); setPage(1); }}>Reset filters</button></div>
-      <label htmlFor="sector-filter">Sector</label><select id="sector-filter" value={sector} disabled={busy} onChange={e => { setSector(e.target.value); setPage(1); }}><option value="">All sectors</option>{sectors.map(s => <option key={s} value={s}>{sectorLabel(s)}</option>)}</select>
-      <label htmlFor="place-filter">Location</label><select id="place-filter" value={place} disabled={busy} onChange={e => { setPlace(e.target.value); setPage(1); }}><option value="">All locations</option>{places.map(p => <option key={p} value={p}>{p}</option>)}</select>
-      <label htmlFor="deadline-filter">Deadline in dataset</label><select id="deadline-filter" value={availability} disabled={busy} onChange={e => { setAvailability(e.target.value); setPage(1); }}><option value="">Any deadline</option><option value="open">Deadline not passed</option><option value="expired">Deadline passed</option><option value="unknown">Not specified</option></select>
-      <p className="catalog-data-note"><strong>About these vacancies</strong>Starter jobs are a frozen demo snapshot. A future deadline does not confirm that a vacancy is still open. Verify its status before real use.</p>
-      <p className="catalog-data-note">Explore the role and its requirements. A human makes the hiring decision.</p>
+    <header className="catalog-heading">
+      <div className="catalog-intro">
+        <p className="catalog-kicker">Browse jobs</p>
+        <h1>Find your next role.</h1>
+        <form className="catalog-search" role="search" aria-label="Jobs" onSubmit={e => {
+          e.preventDefault();
+          if (loaded && !busy) void search();
+        }}>
+          <label htmlFor="vacancy-query">Search by title, skill or location</label>
+          <div className="search-controls">
+            <input id="vacancy-query" type="search" aria-describedby="vacancy-query-help" value={q} disabled={!loaded} onChange={e => setQ(e.target.value)} placeholder="e.g. Python or Stockholm" />
+            <button type="submit" disabled={!loaded} aria-disabled={busy && loaded ? true : undefined}>{busy && loaded ? "Searching…" : "Search jobs"}</button>
+          </div>
+          <p id="vacancy-query-help">All keywords must match. Use terms from the language of the job description.</p>
+        </form>
+      </div>
+      <div className="personal-match-callout">
+        <p className="catalog-kicker">How to apply</p>
+        <h2>Choose a role. Share your experience.</h2>
+        <p>Open a job to review its requirements and submit your fictional CV. We will compare your skills with that role and show your next steps.</p>
+      </div>
+    </header>
+    <div className="catalog-layout"><aside className="catalog-filters" aria-label="Filter jobs">
+      <div className="filter-heading"><h2>Filters</h2><button type="button" disabled={!loaded || busy} onClick={() => { setSector(""); setPlace(""); setAvailability(""); setPage(1); }}>Reset filters</button></div>
+      <div className="filter-fields">
+        <div><label htmlFor="sector-filter">Sector</label><select id="sector-filter" value={sector} disabled={busy || !loaded} onChange={e => { setSector(e.target.value); setPage(1); }}><option value="">All sectors</option>{sectors.map(s => <option key={s} value={s}>{sectorLabel(s)}</option>)}</select></div>
+        <div><label htmlFor="place-filter">Location</label><select id="place-filter" value={place} disabled={busy || !loaded} onChange={e => { setPlace(e.target.value); setPage(1); }}><option value="">All locations</option>{places.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
+        <div><label htmlFor="deadline-filter">Deadline in dataset</label><select id="deadline-filter" value={availability} disabled={busy || !loaded} onChange={e => { setAvailability(e.target.value); setPage(1); }}><option value="">Any deadline</option><option value="open">Deadline not passed</option><option value="expired">Deadline passed</option><option value="unknown">Not specified</option></select></div>
+      </div>
+      <details className="catalog-data-note">
+        <summary>About demo jobs</summary>
+        <p>Starter jobs come from a demo snapshot. Verify the job’s current status with the employer before relying on its deadline.</p>
+      </details>
     </aside>
-    <section className="catalog-results" aria-busy={busy} aria-label="Vacancy results">
-      <div className="catalog-results-heading"><div><h2 ref={resultHeading} tabIndex={-1}>{submitted ? `Results for “${submitted}”` : "All opportunities"}</h2><p role="status">{busy ? "Loading vacancies…" : `${filtered.length} ${filtered.length === 1 ? "vacancy" : "vacancies"}${sector || place || availability ? " after filters" : ""}`}</p></div>{submitted && <button type="button" className="clear-query" disabled={busy} onClick={() => void search(true)}>Clear search</button>}</div>
-      {submitted && <p className="search-scope">Search returns up to 20 starter matches, plus matching employer-created roles. Results retain search relevance order.</p>}
+    <section className="catalog-results" aria-busy={busy} aria-label="Job results">
+      <div className="catalog-results-heading"><div><h2 ref={resultHeading} tabIndex={-1}>{submitted ? `Results for “${submitted}”` : "Jobs"}</h2><p role="status">{busy ? "Loading jobs…" : loaded ? `${filtered.length} ${filtered.length === 1 ? "job" : "jobs"}${hasFilters ? " after filters" : ""}` : "Jobs unavailable"}</p></div>{submitted && <button type="button" className="clear-query" disabled={busy} onClick={() => void search(true)}>Clear search</button>}</div>
+      {submitted && <p className="search-scope">Matching jobs across the full catalog. Title and skill matches appear first.</p>}
       {error && <p role="alert" className="catalog-error">{error}</p>}
-      {!busy && loaded && !filtered.length && <div className="catalog-empty"><h3>No vacancies match this view</h3><p>Try a broader skill, another location, or remove filters to explore more opportunities.</p><button type="button" onClick={() => void search(true)}>Show all vacancies</button></div>}
+      {!busy && loaded && !filtered.length && <div className="catalog-empty"><h3>No jobs match this view</h3><p>Try a broader skill, another location, or remove filters to explore more opportunities.</p><button type="button" onClick={() => void search(true)}>Show all jobs</button></div>}
       {visible.map(job => <article className="vacancy-row" key={job.id}>
-        <div className="vacancy-meta"><span>{job.sector ? sectorLabel(job.sector) : "Sector not specified"}</span><span>{job.source === "search" ? "Starter snapshot" : "Employer-created"}</span></div>
-        <h3>{job.title}</h3><p className="vacancy-location">{job.location || "Location not specified"}</p>
+        <div className="vacancy-meta"><span>{job.sector ? sectorLabel(job.sector) : "Sector not specified"}</span><span className="vacancy-source">{job.source === "search" ? "Demo job" : "Employer posting"}</span></div>
+        <h3>{job.title}</h3>
+        <p className="vacancy-location">{job.location || "Location not specified"}</p>
         {job.ad_text && <p className="vacancy-excerpt">{job.ad_text.replace(/^.*?\n\n/, "")}</p>}
         {!!job.skills?.length && <div className="vacancy-skills" aria-label="Identified skills">{job.skills.slice(0, 4).map(s => <span key={s.concept_id}>{s.label}</span>)}{job.skills.length > 4 && <span>+{job.skills.length - 4} more</span>}</div>}
         {job.application_deadline && <div className="vacancy-facts"><span className={expired(job) ? "deadline-expired" : ""}>{expired(job) ? "Deadline passed" : "Deadline"} · {deadline(job.application_deadline)}</span></div>}
-        <details className="vacancy-description"><summary>Read description &amp; requirements</summary><p>{job.ad_text || "Full description is not available in this result."}</p>{!!job.skills?.length && <><h4>Identified skills</h4><ul>{job.skills.map(s => <li key={s.concept_id}>{s.label}</li>)}</ul></>}{!job.skills?.length && <p className="catalog-muted">Skills have not been identified for this vacancy yet. Review the original description.</p>}</details>
-        <div className="vacancy-actions"><span>Demo application · CV review and tailored assessment</span><Link to={`/jobs/${encodeURIComponent(job.id)}/apply`}>Review &amp; apply →</Link></div>
+        <footer className="vacancy-actions">
+          <details className="vacancy-description"><summary>Description &amp; requirements</summary><p>{job.ad_text || "Full description is not available in this result."}</p>{!!job.skills?.length && <><h4>Identified skills</h4><ul>{job.skills.map(s => <li key={s.concept_id}>{s.label}</li>)}</ul></>}{!job.skills?.length && <p className="catalog-muted">Skills have not been identified for this job yet. Review the original description.</p>}</details>
+          <Link to={`/jobs/${encodeURIComponent(job.id)}/apply`} aria-label={`Review & apply for ${job.title}`}>Review &amp; apply <span aria-hidden="true">→</span></Link>
+        </footer>
       </article>)}
       {!busy && filtered.length > 0 && <nav className="catalog-pagination" aria-label="Results pages"><button type="button" disabled={currentPage <= 1} onClick={() => changePage(currentPage - 1)}>← Previous</button><span>Page {currentPage} of {pages} · {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}</span><button type="button" disabled={currentPage >= pages} onClick={() => changePage(currentPage + 1)}>Next →</button></nav>}
     </section></div>

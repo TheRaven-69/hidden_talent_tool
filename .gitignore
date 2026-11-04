@@ -19,3 +19,6 @@ data/
 *.pfx
 *.key
 *.log
+
+# Local Playwright CLI snapshots and traces
+/.playwright-cli/

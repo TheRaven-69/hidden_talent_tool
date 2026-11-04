@@ -1,0 +1,29 @@
+@property --score-fill { syntax:"<percentage>"; inherits:true; initial-value:0%; }
+.score-threshold { --threshold-color:#487064; padding:22px; margin-bottom:18px; background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--threshold-color); border-radius:12px; transition:border-color .25s ease,--score-fill .18s ease; }
+.score-threshold-low { --threshold-color:#487064; }
+.score-threshold-medium { --threshold-color:#49638d; }
+.score-threshold-high { --threshold-color:#765b89; }
+.score-threshold-heading { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+.score-threshold-heading label { margin:0; font-weight:650; }
+.score-threshold-badge { color:var(--muted); font-size:.7rem; border:1px solid var(--line); padding:4px 8px; border-radius:20px; }
+.score-threshold-value { display:flex; align-items:baseline; gap:16px; margin:20px 0; color:var(--threshold-color); transition:color .25s ease; }
+.score-threshold-value output { font-size:2.6rem; font-weight:700; font-variant-numeric:tabular-nums; line-height:1; }
+.score-threshold-value output span { font-size:1.2rem; padding-left:3px; }
+.score-threshold-tone { font-size:.85rem; font-weight:600; }
+.score-threshold-slider { appearance:none; -webkit-appearance:none; display:block; width:100%; height:8px; margin:16px 0; padding:0; border:0; border-radius:8px; cursor:pointer; background:linear-gradient(to right,var(--threshold-color) 0%,var(--threshold-color) var(--score-fill),var(--line) var(--score-fill),var(--line) 100%); }
+.score-threshold-slider::-webkit-slider-thumb { appearance:none; width:24px; height:24px; border:3px solid var(--threshold-color); border-radius:50%; background:var(--surface); box-shadow:0 2px 6px #0002; transition:transform .15s ease,border-color .25s ease; }
+.score-threshold-slider::-moz-range-thumb { width:18px; height:18px; border:3px solid var(--threshold-color); border-radius:50%; background:var(--surface); transition:transform .15s ease,border-color .25s ease; }
+.score-threshold-slider:active::-webkit-slider-thumb { transform:scale(1.2); }
+.score-threshold-slider:active::-moz-range-thumb { transform:scale(1.2); }
+.score-threshold-slider:disabled { opacity:.5; cursor:not-allowed; }
+.score-threshold-scale { display:flex; justify-content:space-between; font-size:.7rem; color:var(--muted); }
+.score-threshold-controls { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin:18px 0; }
+.score-threshold-presets { display:flex; gap:8px; }
+.score-threshold-presets button { min-height:36px; padding:6px 12px; border:1px solid var(--line); background:var(--surface); border-radius:6px; color:var(--ink); cursor:pointer; transition:background .2s ease,color .2s ease; }
+.score-threshold-presets button[aria-pressed="true"] { background:var(--threshold-color); border-color:var(--threshold-color); color:white; }
+.score-threshold .score-threshold-exact { display:flex; align-items:center; gap:8px; font-size:.75rem; margin:0; color:var(--muted); }
+.score-threshold-exact>span { display:flex; align-items:center; gap:5px; }
+.score-threshold-exact input { box-sizing:border-box; width:68px; padding:7px; border:1px solid var(--control-border); background:var(--surface); border-radius:5px; color:var(--ink); font:inherit; }
+.score-threshold-effect { border-top:1px solid var(--line); padding-top:16px; font-size:.8rem; line-height:1.6; }
+.score-threshold-effect p { margin:5px 0 0; color:var(--muted); }
+@media(prefers-reduced-motion:reduce) { .score-threshold,.score-threshold-value,.score-threshold-presets button,.score-threshold-slider::-webkit-slider-thumb { transition:none; } .score-threshold-slider:active::-webkit-slider-thumb { transform:none; } .score-threshold-slider::-moz-range-thumb { transition:none; } .score-threshold-slider:active::-moz-range-thumb { transform:none; } }
