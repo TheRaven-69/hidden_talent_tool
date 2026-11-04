@@ -1,25 +1,21 @@
-# Running Hidden Talent Tool
+# Running Hidden Talent Tool locally
 
-Run commands in Windows PowerShell from the repository root. The recommended local
-setup is Docker Compose: one container serves the existing built React frontend and
-FastAPI API. The UI is unchanged; no separate Vite or Python process is required.
-Azure Search, Foundry and Cosmos remain the existing cloud services, not local emulators.
+Run these commands in Windows PowerShell. FastAPI serves the API on port 8000.
+Vite serves the React frontend on port 5173 and proxies `/api` to FastAPI.
+The application uses the team's Azure services.
 
-## 1. Prerequisites and configuration
+## 1. Set up your environment
 
-- Docker Desktop running in **Linux containers** mode, with Docker Compose.
-- Access to the team's existing Azure resources and a developer account that can sign in.
-- No host Python, Node or Azure CLI installation is required for the Compose path.
-
-Check Docker:
+Install Python 3.12+, Node.js and Azure CLI. From the repository root, sign in
+with the team's Azure account:
 
 ```powershell
-docker version
-docker compose version
+az login
 ```
 
-`docker version` must show both Client and Server. A missing
-`dockerDesktopLinuxEngine` pipe means Docker Desktop's Linux engine is not running.
+If the team provided a tenant and subscription, use
+`az login --tenant "<tenant-id>"` and `az account set --subscription "<subscription-id>"`.
+If PowerShell cannot find `az` after installation, reopen the terminal.
 
 Create configuration only if `.env` does not already exist:
 
@@ -55,115 +51,57 @@ Existing Cosmos containers are `jobs`, `candidates`, `applications`, `assessment
 variables override names. For example, use `COSMOS_APPLICATIONS=matches` only if the
 team has intentionally chosen that container. Startup never provisions resources.
 
-## 2. Build and sign in inside the local container
+## 2. Start FastAPI and Vite
+
+In the first terminal, from the repository root:
 
 ```powershell
-docker compose build
-docker compose run --rm app az login --use-device-code
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-Follow the URL and code printed by Azure CLI and sign in yourself with the team's
-account. If tenant selection is required:
+In a second terminal, also from the repository root:
 
 ```powershell
-docker compose run --rm app az login --tenant <tenant-id> --use-device-code
-docker compose run --rm app az account set --subscription <subscription-id>
+cd frontend
+npm install
+npm run dev -- --strictPort
 ```
 
-The `local` build target includes Azure CLI in its own Python environment.
-`DefaultAzureCredential` uses that CLI login. Credentials are retained in the
-`azure-login` Docker volume, not in the image or repository. Host Windows CLI login
-is separate; do not mount the Windows `.azure` directory into this Linux container.
-If device-code sign-in is blocked by tenant policy, consult the lab coach; the host
-Python/Vite workflow in section 7 remains available.
+Open [the app](http://localhost:5173) or [the API docs](http://localhost:8000/docs).
+On subsequent runs, start Uvicorn and Vite directly if dependencies are installed.
+Press Ctrl+C in each terminal to stop its server.
 
-## 3. Start, inspect and stop
+## 3. Checks and starter data
+
+From the repository root:
 
 ```powershell
-docker compose up -d
-docker compose ps
-docker compose logs --tail 100 app
+.\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider
+.\.venv\Scripts\python.exe -m scripts.smoke_check
 ```
 
-Open the app at **http://localhost:8080** and API docs at
-**http://localhost:8080/docs**. The healthcheck only confirms the web app responds;
-it does not verify Azure connectivity.
+The test suite runs offline. Expect 29 passes and 5 skipped TODO tests.
+The Azure smoke check reads data and makes small billable model calls.
+Expect five OK lines for chat, embeddings, taxonomy search, jobs search and Cosmos.
+If credentials fail, check `az account show` in the same terminal that runs FastAPI.
+For a 403, check the service data roles listed above.
 
-After code changes, rebuild (there are no source bind mounts or hot reload):
+The starter jobs are already synchronized in the team's environment. To check a
+different environment, preview the import and apply it only if jobs are missing:
 
 ```powershell
-docker compose up -d --build
+.\.venv\Scripts\python.exe -m scripts.sync_jobs
+.\.venv\Scripts\python.exe -m scripts.sync_jobs --apply
 ```
 
-The old local servers on ports 5173/8000 can be stopped when you switch to 8080.
-If 8080 is occupied, set `APP_PORT=8081` in `.env` and recreate the container.
+Sync inserts missing Search IDs in Cosmos and preserves existing jobs. Add
+`--metadata "C:/path/to/job_ads.json"` to include dates for newly inserted jobs.
+The older preprocessing scripts can overwrite records and make model calls.
+Reserve them for intentional reprocessing.
 
-```powershell
-docker compose logs -f app
-docker compose down
-```
-
-`down` retains the Azure login volume. To sign out:
-
-```powershell
-docker compose run --rm app az logout
-```
-
-## 4. Checks
-
-Offline tests (Azure and LLM calls mocked):
-
-```powershell
-docker compose run --rm app python -m pytest -q -p no:cacheprovider
-```
-
-Current expected result: **29 passed, 5 skipped**. Five original TODO tests remain.
-The local image includes test dependencies; the production image does not.
-
-Azure smoke check (reads data and makes small billable chat/embedding calls; no writes):
-
-```powershell
-docker compose run --rm app python -m scripts.smoke_check
-```
-
-Expect five `OK` lines: chat, embeddings, taxonomy search, jobs search, Cosmos.
-- Login errors: repeat the container login, checking tenant and subscription.
-- 403: verify service data roles; allow time for newly assigned roles to propagate.
-- Unknown field/filter: compare `.env` names with actual Search schema.
-- Wrong vector dimension: verify the embedding deployment and index model agree.
-- Missing Cosmos container: consult the team; do not recreate the environment blindly.
-
-## 5. Starter catalog and optional data preparation
-
-Search contains 200 starter jobs. Each application needs a Cosmos job with the same
-ID. Our initial sync added these jobs while preserving employer-created jobs; reruns
-only insert missing IDs and never replace existing documents.
-
-Preview, then explicitly apply if necessary:
-
-```powershell
-docker compose run --rm app python -m scripts.sync_jobs
-docker compose run --rm app python -m scripts.sync_jobs --apply
-```
-
-Optional date metadata is in `job_ads.json`, not in Search. To use a host dataset,
-mount its directory read-only (replace the example with your actual absolute path):
-
-```powershell
-docker compose run --rm -v "C:/path/to/datasets:/data:ro" app python -m scripts.sync_jobs --metadata /data/job_ads.json
-docker compose run --rm -v "C:/path/to/datasets:/data:ro" app python -m scripts.sync_jobs --apply --metadata /data/job_ads.json
-```
-
-Metadata is applied only to newly inserted documents. The sync makes no model calls
-and never writes to Search. Job skills are normalized on first use and retained.
-Starter candidates already exist in Cosmos; reimporting all profiles is unnecessary.
-
-The older `scripts.preprocess_jobs` and `scripts.preprocess_candidates` commands
-still exist. They **upsert** and can replace existing records. Use them only for
-intentional preprocessing, first with `--limit 3`; they make billable model calls.
-Do not run a full reload as a routine startup step.
-
-## 6. Current UI and behavior
+## 4. Current UI and behavior
 
 - **All jobs:** search, sector/location/deadline filters, descriptions, available
   skills and pagination. Numeric recruiter gates and skill weights are hidden in
@@ -199,33 +137,7 @@ Critical qualifications/licence gating is not implemented yet. Starter vacancies
 are a frozen snapshot and can be expired. Drafts and application receipts in the UI
 are not persisted across page reloads, although submitted applications stay in Cosmos.
 
-## 7. Optional host development with hot reload
-
-Use this when actively changing code or when container sign-in is unavailable.
-Prerequisites: Python 3.12+, Node 20+, Azure CLI on PATH and `.env` configured.
-
-```powershell
-az login
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements-dev.txt
-python -m pytest -q
-uvicorn app.main:app --reload
-```
-
-In a second terminal:
-
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-Open http://localhost:5173; Vite proxies `/api` to port 8000. This login is independent
-from the container login. If Vite shows old modules after file changes, restart its
-process. Container rebuilds avoid dependence on filesystem watchers.
-
-## 8. Production image for Azure Container Apps
+## 5. Production image for Azure Container Apps
 
 ```powershell
 docker build --target production -t hidden-talent .
@@ -235,6 +147,5 @@ The default final Dockerfile stage is also `production`. It serves built React a
 FastAPI in one container on port 8000 and omits Azure CLI/test tooling. Configure the
 existing endpoints and deployment names as Container App environment variables.
 Attach the supplied user-assigned managed identity and set `AZURE_CLIENT_ID` to its
-client ID, with the service data roles already assigned. Do not mount the local
-Azure login volume in Azure. Image publishing/deployment is a separate team step;
+client ID, with the service data roles already assigned. Image publishing/deployment is a separate team step;
 these commands do not provision or deploy any Azure resources.

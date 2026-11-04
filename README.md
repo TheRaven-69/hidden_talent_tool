@@ -5,10 +5,8 @@ An AI-powered tool that helps employers find the right candidate by extracting a
 > **This file is both the team's project guide and the master prompt for AI coding assistants.**
 > When using an AI assistant (Claude Code, Copilot, Cursor, etc.), give it this file first. Section 11 contains rules the assistant must follow.
 
-For the current setup and supported flows, see [RUNNING.md](RUNNING.md). The recommended
-local run uses Docker Compose on port 8080; host Python/Vite remains an optional
-hot-reload workflow. The local image includes Azure CLI for developer sign-in, while
-the default production image uses managed identity without CLI/test tooling.
+For local development, run FastAPI and Vite with hot reload. See
+[RUNNING.md](RUNNING.md) for setup, Azure sign-in and deployment instructions.
 
 ---
 
