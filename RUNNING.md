@@ -1,12 +1,14 @@
-# Running Hidden Talent Tool locally
+# Running Fynd Talent locally
 
 Run these commands in Windows PowerShell. FastAPI serves the API on port 8000.
 Vite serves the React frontend on port 5173 and proxies `/api` to FastAPI.
-The application uses the team's Azure services.
+The application needs configured Azure services and populated starter data. The original
+hackathon lab was temporary; a fresh clone does not include access or provision resources.
+Use fictional candidate data only. There is no application login or employer isolation.
 
 ## 1. Set up your environment
 
-Install Python 3.12+, Node.js and Azure CLI. From the repository root, sign in
+Install Python 3.12+, Node.js 20+ and Azure CLI. From the repository root, sign in
 with the team's Azure account:
 
 ```powershell
@@ -82,14 +84,17 @@ From the repository root:
 .\.venv\Scripts\python.exe -m scripts.smoke_check
 ```
 
-The test suite runs offline. Expect 29 passes and 5 skipped TODO tests.
+The test suite runs offline. Verified on 5 November 2026: 41 passed and 5 skipped
+TODO tests. The frontend TypeScript check also passed. These checks do not measure
+AI matching accuracy or fairness.
 The Azure smoke check reads data and makes small billable model calls.
 Expect five OK lines for chat, embeddings, taxonomy search, jobs search and Cosmos.
 If credentials fail, check `az account show` in the same terminal that runs FastAPI.
 For a 403, check the service data roles listed above.
 
-The starter jobs are already synchronized in the team's environment. To check a
-different environment, preview the import and apply it only if jobs are missing:
+The starter jobs were synchronized in the hackathon environment. For a different
+environment, first supply the compatible indexes and data; then preview the import
+and apply it only if jobs are missing:
 
 ```powershell
 .\.venv\Scripts\python.exe -m scripts.sync_jobs
@@ -113,7 +118,7 @@ Reserve them for intentional reprocessing.
   It does not translate keywords or correct spelling. The small demo catalog is
   read and ranked in the backend; a larger deployment should index all sources
   together and paginate on the server.
-- **Candidate journey:** browse jobs, choose a vacancy, then submit a fictional CV
+- **Candidate journey:** browse jobs, choose a job, then submit a fictional CV
   on its application page. The separate CV recommendations page has been removed;
   old `/recommendations` URLs redirect to the job catalog. The backend recommendation
   API remains available but is not part of the candidate UI.
@@ -127,12 +132,12 @@ Reserve them for intentional reprocessing.
   assessment brief guides question generation and open-answer rubrics. It is omitted
   from candidate catalog/detail/recommendation responses. The assessment target is
   stored but is not yet applied to results or decisions.
-- **Applications** (`/employer/applications`): employer inbox with vacancy/status
+- **Applications** (`/employer/applications`): employer inbox with job/status
   filters, candidate ID search, saved CV evidence, required-skill gaps and assessment
   scores. **View application** opens `/employer/applications/:applicationId` with
   CV evidence, individual assessment questions, selected answers and saved score
   explanations. Missing explanations are labelled explicitly. Publishing opens the inbox filtered
-  to the vacancy. Refresh retrieves new submissions/results.
+  to the job. Refresh retrieves new submissions/results.
 - Summaries use stored evidence without an additional LLM call. New applications
   save a candidate snapshot and submission date; assessment generation uses that
   snapshot. Legacy applications explicitly show the current profile instead.
@@ -169,3 +174,10 @@ existing endpoints and deployment names as Container App environment variables.
 Attach the supplied user-assigned managed identity and set `AZURE_CLIENT_ID` to its
 client ID, with the service data roles already assigned. Image publishing/deployment is a separate team step;
 these commands do not provision or deploy any Azure resources.
+
+## 6. Public documentation and screenshots
+
+See [README.md](README.md) for the product walkthrough and architecture. Screenshot
+provenance is recorded in [docs/images/README.md](docs/images/README.md). The preserved
+[initial brief](docs/initial-brief.md) is a historical record, not the current
+setup guide. No public deployment is implied by the production image instructions.

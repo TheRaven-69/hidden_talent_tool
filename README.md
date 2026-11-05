@@ -1,346 +1,219 @@
-# Hidden Talent Tool Hackathon
+<p align="center">
+  <img src="frontend/public/fynd-mark.svg" alt="Fynd Talent logo" width="76" />
+</p>
 
-An AI-powered tool that helps employers find the right candidate by extracting and translating competencies from CVs and job ads, matching them through a shared skills taxonomy, and verifying them with a tailored AI assessment
+# Fynd Talent
 
-> **This file is both the team's project guide and the master prompt for AI coding assistants.**
-> When using an AI assistant (Claude Code, Copilot, Cursor, etc.), give it this file first. Section 11 contains rules the assistant must follow.
+**See the skills behind the CV.**
 
-For local development, run FastAPI and Vite with hot reload. See
-[RUNNING.md](RUNNING.md) for setup, Azure sign-in and deployment instructions.
+A skills-based hiring prototype that connects CV evidence to job requirements and gives employers a clearer view of candidates through tailored assessments.
 
----
+Built during the two-day **AI:spire hackathon, 3–4 November 2026**. Fynd Talent combines a React interface, a Python API and Azure AI services in a working candidate-to-employer workflow. It is a demonstration with fictional candidate data, not a production recruitment system.
 
-## 1. Problem and goal
+[Product walkthrough](#product-walkthrough) · [Architecture](#architecture--ai-integration) · [Run locally](#running-locally) · [Limitations](#limitations--next-steps)
 
-Good candidates are often missed because their CVs describe skills in different words, in another language, or through experience from another field. Keyword matching filters them out.
+## Overview
 
-**Goal:** match employers with the right talent, including candidates whose skills are "hidden" in their CV, and give employers an explainable, per-skill view of each candidate.
+When AI can help write a CV and screen it, a convincing application still leaves an important question unanswered: how well can the candidate demonstrate what the role requires?
 
-**Event constraints:** 1.5 days, 5 people, Python backend with a React frontend, and only the Azure resources listed in section 3.
+Fynd Talent starts with the employer's expectations. Employers define the role, review the required skills, distinguish must-haves from nice-to-haves, and specify what candidates should demonstrate in an assessment. They also set the minimum CV match percentage needed to access that assessment. The CV provides initial evidence; a tailored assessment then explores relevant knowledge, practical judgement, claimed experience and skills not evidenced in the CV.
 
----
+Employers can review the candidate's answers alongside scores and concise AI-generated explanations for written responses. These explanations describe how an answer meets the assessment criteria, where it falls short and why it received its score, helping the employer interpret the response rather than rely on a percentage alone.
 
-## 2. User flow
+The goal is to connect employer-defined requirements with evidence that a person can inspect. Assessments provide additional information, not proof of independently demonstrated ability: candidates may use AI to answer, and automated grading can be imperfect. The final hiring decision stays with the employer.
 
-1. **Employer creates a job ad**, selects the most important skills (must-have / nice-to-have), sets an assessment gate and a pass threshold, and publishes it.
-2. **Candidate finds the job and applies** with a CV.
-3. **The CV is matched** against the job's skills. If the match score is above the employer's gate, the candidate is invited to a **tailored assessment**: hard and soft skills chosen by the employer, questions based on the candidate's CV, and questions probing skills the CV doesn't show.
-4. **Employer sees the results**: match score, assessment score, and a per-skill breakdown with evidence. **A human makes the decision** (invite or reject).
+## How it works
 
----
+1. **Define the job.** An employer enters a description, reviews AI-suggested skills, sets their importance and configures assessment access.
+2. **Apply to a specific role.** A candidate browses jobs, reviews the requirements and submits fictional CV text or selects a supplied synthetic profile.
+3. **Compare the evidence.** The backend identifies skills, maps them to JobTech concepts and calculates the CV match.
+4. **Explore skills through assessment.** Candidates meeting the numerical entry threshold can answer tailored technical, situational, experience-based and gap-probing questions.
+5. **Review the application.** The employer inspects CV evidence, answers, scores and saved explanations on a dedicated application page. Below-threshold applications remain available for review.
 
-## 3. Resources (use only these)
+## Key features
 
-| Resource | Purpose |
-|---|---|
-| **Azure AI Foundry** | Chat model (extraction, question generation, grading) and embedding model |
-| **Azure AI Search** | Existing indexes: `taxonomy` (skill normalizer) and `jobs` (candidate job search) |
-| **Azure Cosmos DB** | Jobs, candidates, applications, assessments, cached LLM results |
-| **Azure Storage** | Uploaded CV files |
-| **Azure Container Apps** | Hosts the app (one container: FastAPI + built React) |
-| **Identity** | Managed identity / role-based access, no hard-coded keys in code |
-| **Logs** | Application and LLM-call logging |
+- **One job catalog:** keyword search across imported and employer-created jobs, with location, sector and deadline filters.
+- **Employer-reviewed requirements:** AI skill suggestions, must-have/nice-to-have weighting and internal assessment instructions separate from the public description.
+- **Evidence-based matching:** taxonomy concept IDs, original CV quotes, and distinct labels for directly supported, inferred and missing skills.
+- **Tailored assessments:** multiple-choice questions and written responses, with saved scoring explanations for AI-graded answers.
+- **Application review:** a searchable inbox and individual detail pages, including a CV snapshot for new applications.
+- **Clear feedback during processing:** AI loading states, error recovery and explanatory assessment controls with reduced-motion support.
 
-**Mock data provided:** 200 Swedish job ads, 1,248 JobTech taxonomy concepts, 100 fictional English candidate profiles.
+## Product walkthrough
 
-**Do not add other services or paid resources.**
+Screenshots were captured from the local prototype using demo data. The interface is in English; job content and assessment questions retain Swedish. See [capture notes](docs/images/README.md) for the sample and capture method.
 
----
+### 1. Browse jobs
 
-## 4. Core idea: taxonomy as the common language
+Search titles, skills, descriptions and locations. All search terms must match, and title/skill matches rank ahead of description-only matches. Ordinary keyword search does not call an AI model.
 
-Job ads (Swedish) and CVs (English) describe the same skills in different words. Both are translated into the same fixed vocabulary: **JobTech taxonomy concept IDs**. Matching then compares lists of concept IDs, which is precise and explainable.
+![Job catalog with Python search results and filters](docs/images/browse-jobs.png)
 
-**Skill normalization pipeline** (used for both jobs and CVs):
+### 2. Define and review job requirements
 
-1. **Extract:** the LLM pulls skill phrases from the text (structured JSON output).
-2. **Search:** each phrase is queried against the `taxonomy` index in AI Search, returning the top 5 candidate concepts.
-3. **Pick:** the LLM chooses the correct concept from those 5, or `none`. It never invents concepts.
-4. **Store:** the concept ID, label, and (for candidates) evidence quote and confidence flag.
+The employer reviews extracted skills before publishing. Suggestions can be removed or assigned different importance. The assessment entry score controls access; the separate target score is currently stored for reference only.
 
-**Confidence flags for candidate skills:**
-- `explicit`: the skill is stated in the CV.
-- `inferred`: a transferable skill implied by the CV (e.g. "managed the Kyiv office" → people management). This is the "hidden talent." Inferred skills must always be labeled as inferred and backed by an evidence quote.
+![Employer reviewing AI-suggested skills in an unpublished job draft](docs/images/post-job.png)
 
----
+### 3. Submit a CV for the chosen role
 
-## 5. Before coding: verify the existing indexes
+The application page brings the job description and candidate input together. The prototype accepts pasted text or synthetic profiles; it does not upload PDF or DOCX files.
 
-Check these in the Azure portal (AI Search → Indexes → Fields / Vector profiles / Search explorer) and fill in the table:
+![Job application page with a fictional candidate draft](docs/images/apply-job.png)
 
-| Question | `taxonomy` | `jobs` |
+### 4. Complete a tailored assessment
+
+Questions test relevant skills and explore experience that may not be explicit in the CV. Multiple-choice answers use a saved answer key; written responses are scored against generated rubrics.
+
+![Candidate assessment with saved Swedish questions](docs/images/assessment.png)
+
+*This screen replays previously generated questions in the real assessment UI. No new attempt or result was saved for the screenshot.*
+
+### 5. Inspect the evidence behind an application
+
+The employer sees the CV match, assessment result and skills requiring further verification. Each question has a separate answer-and-explanation view; the interface explicitly identifies missing explanations rather than inventing them.
+
+![Employer application overview with CV and assessment scores](docs/images/application-review.png)
+
+![Written assessment answer alongside its saved scoring explanation](docs/images/assessment-review.png)
+
+## Technology stack
+
+| Layer | Technologies | Purpose |
 |---|---|---|
-| Field names (id, label, description, type) | TBD | TBD |
-| Vector field name and dimensions | TBD | TBD |
-| Vectorizer configured? Which embedding model? | TBD | TBD |
-| Concept types (skills only, or mixed?) | TBD | n/a |
-| Label languages (sv / en) | TBD | TBD |
+| Frontend | React 18, TypeScript, Vite, React Router, CSS | Candidate and employer workflows |
+| API | Python, FastAPI, Pydantic, Uvicorn | Validation, orchestration and HTTP endpoints |
+| AI | Azure OpenAI through Azure AI Foundry; OpenAI Python SDK | Skill extraction, concept selection, questions, written-answer grading and embeddings |
+| Retrieval | Azure AI Search, JobTech taxonomy | Hybrid keyword/vector retrieval of candidate skill concepts |
+| Persistence | Azure Cosmos DB | Jobs, profiles, applications, assessments and structured LLM response cache |
+| Service identity | Azure Identity / DefaultAzureCredential | Local Azure CLI credentials and managed-identity support |
+| Testing | pytest, HTTPX/FastAPI TestClient, TypeScript compiler | Backend regression tests and frontend type checks |
+| Packaging | Multi-stage Dockerfile | Built React assets and FastAPI in one image |
 
-**Rules:**
-- Queries must use the **same embedding model** that built the index.
-- If the taxonomy mixes concept types, filter to skill-type concepts.
-- If there are no vector fields, use keyword search as a fallback and raise it with the team.
+The supplied hackathon environment used **GPT-5 mini** and **text-embedding-3-small (1,536 dimensions)**. Deployment names are configurable. Query embeddings must match the model and dimensions used to create the existing vector indexes.
 
----
+## Architecture & AI integration
 
-## 6. Architecture
-
-```
-React UI (employer + candidate views, built to static files)
-        │  HTTP/JSON
-FastAPI backend ──> Foundry (chat + embeddings)
-        │       ──> AI Search (taxonomy, jobs)
-        │       ──> Cosmos DB (all app data + LLM cache)
-        │       ──> Storage (CV files)
-        │
-One container in Container Apps: FastAPI serves the API and the built
-React files, managed identity, logs
-```
-
-**Frontend deployment:** the React app is built (`npm run build`) in a multi-stage Dockerfile, and FastAPI serves the static files. This keeps everything in one container on the existing Container App, with no extra hosting resource and no CORS setup in production. During local development, run the React dev server (Vite) with a proxy to FastAPI.
-
----
-
-## 7. Data model (Cosmos DB containers)
-
-**jobs**
-```json
-{
-  "id": "job-001",
-  "title": "Backend Developer",
-  "location": "Stockholm",
-  "ad_text": "...",
-  "skills": [
-    {"concept_id": "abc123", "label": "Python", "weight": "must"},
-    {"concept_id": "def456", "label": "Systemarkitektur", "weight": "nice"}
-  ],
-  "gate": 0.5,
-  "pass_threshold": 0.7
-}
+```mermaid
+flowchart TD
+    UI[React candidate and employer UI] -->|HTTP /api| API[FastAPI]
+    API --> Catalog[Keyword job search]
+    Catalog --> Cosmos[(Cosmos DB)]
+    API --> Normalize[Skill normalization]
+    Normalize --> Client[Python AI client]
+    Client --> AI[Azure OpenAI: structured outputs and embeddings]
+    Normalize --> Search[Azure AI Search: JobTech taxonomy]
+    API --> Match[Weighted skill coverage + embedding similarity]
+    Match --> Client
+    API --> Assessment[Tailored assessment and grading]
+    Assessment --> Client
+    API --> Cosmos
+    Client -. Structured response cache .-> Cosmos
+    Starter[Existing Azure Search jobs index] -->|Import script| Cosmos
 ```
 
-**candidates**
-```json
-{
-  "id": "cand-042",
-  "cv_text": "...",
-  "cv_blob_path": "cvs/cand-042.pdf",
-  "skills": [
-    {"concept_id": "abc123", "label": "Python", "confidence": "explicit",
-     "evidence": "Built Django APIs serving..."},
-    {"concept_id": "ghi789", "label": "Personalledning", "confidence": "inferred",
-     "evidence": "Country Manager for the Kyiv office"}
-  ]
-}
+### From text to comparable skills
+
+1. **Extract:** the model returns skill phrases and supporting evidence in a Pydantic-validated structure.
+2. **Retrieve:** hybrid search returns up to five taxonomy candidates for each phrase, filtered to skill concepts.
+3. **Select:** a model chooses a retrieved concept or `none`. Python rejects IDs outside the retrieved set.
+4. **Store:** concept IDs, labels and candidate evidence are retained for matching and review.
+
+The prompts are designed around English candidate backgrounds and Swedish job/taxonomy content. Candidate skill phrases are requested in Swedish while evidence remains in its original language. This is not a general-purpose translation service.
+
+### Matching and assessment scoring
+
+```text
+CV match = 0.70 × weighted skill coverage + 0.30 × embedding cosine similarity
 ```
 
-**applications**
-```json
-{
-  "id": "app-001",
-  "job_id": "job-001",
-  "candidate_id": "cand-042",
-  "match_score": 0.68,
-  "skill_breakdown": [
-    {"concept_id": "abc123", "status": "explicit", "evidence": "..."},
-    {"concept_id": "def456", "status": "missing"}
-  ],
-  "status": "assessment_invited"
-}
+Skill coverage gives full credit to directly supported skills, half credit to inferred skills and zero to missing skills. Must-have skills have weight 2; nice-to-have skills have weight 1. These are prototype heuristics, not calibrated hiring probabilities.
+
+Assessment generation requests six questions: three technical multiple-choice questions and one each for situational judgement, CV experience and a skill gap. Multiple-choice grading runs in Python. Written-answer grading uses the stored rubric and returns a score plus reasoning. Overall and per-skill assessment scores are averages of the relevant question scores.
+
+AI calls are orchestrated by application code, not autonomous agents. Structured chat responses are cached in Cosmos by a hash of the deployment, purpose, prompt/input and schema name. Embeddings are requested separately. Application overview summaries use stored evidence rather than another model call.
+
+### Search is separate from recommendations
+
+The visible job search reads the Cosmos catalog and ranks literal keyword matches, including newly posted jobs. Hybrid retrieval is used for skill normalization and a retained backend recommendation endpoint. The standalone recommendation page was deliberately removed so candidates choose a role before submitting their CV. New jobs are not automatically written into the Azure Search index.
+
+## Running locally
+
+**Requirements:** Python 3.12+, Node.js 20+, Azure CLI, and access to configured Azure OpenAI deployments, populated Search indexes and Cosmos containers. Cloud resources and starter datasets are not provisioned or bundled by this repository. The original lab resources may be temporary; cloning the repository alone does not provide a self-contained demo.
+
+The commands below use Windows PowerShell. See [RUNNING.md](RUNNING.md) for required fields, data roles, container names, starter-data import and troubleshooting.
+
+```powershell
+az login
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
-**assessments**
-```json
-{
-  "id": "asm-001",
-  "application_id": "app-001",
-  "questions": [
-    {"id": "q1", "type": "hard_skill", "concept_id": "abc123",
-     "format": "multiple_choice", "text": "...", "options": ["..."],
-     "correct": "B", "answer": "B", "score": 1.0},
-    {"id": "q2", "type": "soft_skill", "format": "open",
-     "text": "...", "rubric": "...", "answer": "...",
-     "score": 0.75, "reasoning": "..."}
-  ],
-  "total_score": 0.78,
-  "per_skill": {"abc123": 1.0, "def456": 0.6}
-}
+Fill in the placeholders in `.env`, then start the backend:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-Field names are a starting point. Agree on final schemas in the first hour and don't change them without telling the team.
+In another terminal:
 
----
-
-## 8. Scoring
-
-**Match score** (CV vs. job), shown as a per-skill breakdown, not just a total:
-- Skill coverage: for each required skill, `explicit` = 1.0, `inferred` = 0.5, `missing` = 0. Must-have skills weigh more than nice-to-have (e.g. 2 : 1).
-- Semantic similarity: CV embedding vs. job ad embedding.
-- `match_score = 0.7 × coverage + 0.3 × similarity` (tune if needed).
-
-**Assessment gate:** set by the employer (suggested default 50%). The CV match decides *what to ask* as much as *whether to ask*.
-
-**Assessment score:**
-- Hard-skill questions: auto-graded (multiple choice or short answers with a clear key).
-- Soft-skill and open questions: graded by the LLM against a rubric written when the question is generated. Store the reasoning.
-- Report both a total and a per-skill score.
-
-**Pass threshold:** set by the employer (suggested default 70%). The tool never rejects anyone automatically.
-
----
-
-## 9. Assessment design
-
-6–8 questions per application:
-- **Hard skills** (employer-selected): 2–3, auto-graded.
-- **Soft skills** (employer-selected): 1–2 situational judgment questions, rubric-graded.
-- **CV-based**: 1–2 questions verifying claimed experience.
-- **Gap probes**: 1–2 questions on must-have skills the CV doesn't show (where hidden talent can surface).
-
----
-
-## 10. API endpoints (FastAPI)
-
-| Method | Path | Purpose |
-|---|---|---|
-| POST | `/jobs/suggest-skills` | Ad text → suggested taxonomy skills |
-| POST | `/jobs` | Save a confirmed job |
-| GET | `/jobs` | List / search jobs |
-| POST | `/applications` | Candidate applies (CV upload or mock profile) → match score |
-| POST | `/assessments/{application_id}` | Generate the assessment |
-| POST | `/assessments/{id}/submit` | Submit answers → grading |
-| GET | `/jobs/{job_id}/candidates` | Employer dashboard: ranked candidates with breakdown |
-
----
-
-## 11. Rules for AI coding assistants
-
-When generating code for this project:
-
-1. **Use only the resources in section 3.** Do not introduce new Azure services, external APIs, or paid tools.
-2. **Stack:** Python with FastAPI for the backend; React with TypeScript (Vite) for the frontend. Keep the frontend simple: plain components, `fetch` for API calls, one lightweight UI library at most. All AI, search and data logic stays in the backend; the frontend never calls Azure services directly.
-3. **Authentication:** use `DefaultAzureCredential` (managed identity). Never hard-code keys or secrets; read configuration from environment variables.
-4. **Structured outputs:** every LLM call returns JSON validated against a schema (Pydantic models).
-5. **Never invent taxonomy concepts.** The LLM may only choose from concepts returned by AI Search, or `none`.
-6. **Label inferred skills** as `inferred` and always attach an evidence quote from the CV.
-7. **Cache LLM results** in Cosmos DB keyed by input hash, so the demo runs fast and repeatable.
-8. **Log every LLM call** (purpose, latency, success/failure). Do not log full CV text or personal data.
-9. **Privacy and fairness:** strip names, age, gender, photos, and contact details before any scoring or grading. The tool supports human decisions and never auto-rejects.
-10. **Keep it simple:** hackathon code, readable over clever. No auth/login, notifications, or multi-tenant features.
-11. **Follow the schemas in section 7.** If a change is needed, say so explicitly.
-12. **Tests:** add or update a test in `tests/` for every service function you write (see section 13). Mock Azure clients and LLM calls; tests must run without network access.
-
----
-
-## 12. Repository structure
-
-```
-hidden-talent-tool/
-├── README.md
-├── .gitignore
-├── .env.example            # endpoints and deployment names, no secrets
-├── requirements.txt
-├── Dockerfile              # multi-stage: build React, then Python image
-├── app/                    # FastAPI backend
-│   ├── main.py             # app entry; mounts API routes + serves frontend build
-│   ├── api/                # FastAPI routes
-│   ├── services/
-│   │   ├── llm.py          # Foundry client, structured outputs, caching
-│   │   ├── search.py       # AI Search queries (taxonomy, jobs)
-│   │   ├── normalize.py    # extract → search → pick pipeline
-│   │   ├── matching.py     # match score
-│   │   ├── assessment.py   # question generation + grading
-│   │   └── storage.py      # Cosmos DB + Blob Storage
-│   └── models/             # Pydantic schemas
-├── frontend/               # React + TypeScript (Vite)
-│   ├── package.json
-│   ├── vite.config.ts      # dev proxy: /api → FastAPI
-│   └── src/
-│       ├── api/            # typed fetch helpers for the endpoints in section 10
-│       ├── pages/
-│       │   ├── employer/   # create job, candidate dashboard
-│       │   └── candidate/  # job list, apply, assessment
-│       └── components/     # skill breakdown, score display, forms
-├── tests/                  # backend unit tests (pytest), see section 13
-├── scripts/
-│   ├── preprocess_jobs.py
-│   └── preprocess_candidates.py
-└── notebooks/              # prompt experiments
+```powershell
+cd frontend
+npm install
+npm run dev -- --strictPort
 ```
 
----
+Open [the app](http://localhost:5173) or [interactive API documentation](http://localhost:8000/docs). Vite proxies `/api` requests to FastAPI on port 8000. Local development does not require Docker or Compose.
 
-## 13. Unit tests
+A production-target Dockerfile is included for packaging. A public deployment is not provided or verified by this README.
 
-Backend tests use **pytest** and live in `tests/`. They must run offline: mock all Azure clients (Foundry, AI Search, Cosmos DB, Storage) and LLM responses.
+## Engineering decisions
 
-```
-tests/
-├── conftest.py              # shared fixtures: sample job, candidate, mocked clients
-├── test_normalize.py        # TODO: extract → search → pick; "none" when no concept fits
-├── test_matching.py         # TODO: coverage weights (explicit/inferred/missing, must/nice), score range 0–1
-├── test_assessment.py       # TODO: question mix per section 9; grading of MC and rubric answers
-├── test_storage.py          # TODO: Cosmos/Blob read-write with mocked clients
-└── test_api.py              # TODO: endpoint smoke tests with FastAPI TestClient
-```
+- **A common vocabulary instead of matching titles alone.** Taxonomy IDs connect differently worded skills, while evidence quotes make mappings reviewable. Incorrect or overly specific mappings remain a known limitation.
+- **Keyword search and semantic retrieval serve different needs.** Hybrid retrieval initially returned loosely related jobs even for meaningless queries. Job browsing now uses explicit keyword matches; taxonomy retrieval still benefits from vectors.
+- **One application catalog.** An insert-only sync imports missing starter jobs into Cosmos without overwriting employer-created records. Newly created jobs are immediately searchable there.
+- **Keep public descriptions and assessment guidance separate.** Internal instructions influence questions and rubrics without being shown in the candidate job description.
+- **Preserve the submitted evidence.** New applications store a candidate snapshot, so subsequent profile changes do not silently replace the CV under review.
+- **Make latency visible.** Cached structured responses and clear loading/error states support a workflow where first-time AI processing can take several minutes.
 
-Placeholder to start from:
+## Validation
 
-```python
-# tests/test_matching.py
-import pytest
+On **5 November 2026**, the offline backend suite reported **41 passed, 5 skipped**; the frontend TypeScript check passed. Tests cover matching, keyword search, catalog synchronization, profile handling, application review and selected assessment/API behavior. Skipped tests are unfinished coverage, not successful checks. These results do not establish model accuracy, fairness or production readiness.
 
-@pytest.mark.skip(reason="TODO: implement once matching.py exists")
-def test_explicit_must_have_counts_fully():
-    ...
-
-@pytest.mark.skip(reason="TODO")
-def test_inferred_skill_counts_half():
-    ...
-
-@pytest.mark.skip(reason="TODO")
-def test_match_score_between_0_and_1():
-    ...
+```powershell
+.\.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider
+cd frontend
+npx tsc --noEmit
+npm run build
 ```
 
-Run with `pytest` from the repository root. Frontend tests are out of scope for the hackathon.
+The separate `python -m scripts.smoke_check` requires Azure access and makes model calls. Do not confuse it with the offline test suite.
 
----
+## Limitations & next steps
 
-## 14. Catalog and recommendations implementation additions
+- **Demo access model:** no user authentication, employer isolation or authorization. Use synthetic data; this is not a private recruitment portal.
+- **Incomplete privacy protection:** basic preprocessing removes email addresses and phone numbers from selected inputs. It does not comprehensively anonymize CVs or written answers. Displaying a candidate ID is not anonymization.
+- **Experimental AI evaluation:** taxonomy choices and generated rubrics can be imperfect. There is no measured hiring-quality or fairness benchmark, and no proctoring or verification of qualifications/licences.
+- **Reference-only target:** the assessment target does not implement pass/fail decisions. The match threshold controls assessment access; there is no automated hiring/rejection workflow.
+- **Limited input and language scope:** no document upload/parsing, no keyword translation, Swedish assessment questions, and English/Swedish written-answer grading prompts.
+- **Prototype persistence and scale:** drafts and in-progress answers are not restored after reload. Catalog and employer reads load small datasets in memory; pagination and scoped queries would be needed at scale. Requests are synchronous, and backend assessment creation/submission is not an idempotent workflow.
+- **Operational work remains:** reproducible dependency locks, CI, broader automated UI tests, deployment automation and full Search index synchronization.
 
-- Jobs optionally store `assessment_brief` (up to 6,000 characters) as internal
-  employer guidance, separate from public `ad_text`. Existing jobs default to an
-  empty brief. Generation uses it to focus questions and write open-answer rubrics;
-  grading then uses those stored rubrics. It does not affect CV matching or gates.
-  Candidate job list/detail and recommendation responses omit the brief. Candidate
-  assessment responses omit `correct` and `rubric`; full data remains stored for
-  grading and the employer dashboard. This demo still has no login/access control.
+Priority improvements are access control, data protection, a labelled evaluation set for matching/grading, reliable resumable assessments, and a reproducible demo setup independent of the original lab.
 
-- `python -m scripts.sync_jobs` previews importing missing Search jobs into Cosmos;
-  `--apply` inserts them without replacing existing jobs. Optional `--metadata`
-  accepts the starter jobs JSON for dates. No Search index writes are required.
-- Imported jobs add `source: "search"`, `sector`, `source_url`, optional dates and
-  `skills_normalized`. Candidate documents can also carry `skills_normalized`.
-  Existing metadata and candidate partition keys are preserved during normalization.
-- `GET /api/candidates` returns fictional profile choices; `POST /api/recommendations`
-  accepts exactly one of `candidate_id` or non-empty `cv_text`.
-- Recommendations use taxonomy labels for hybrid retrieval (five starter jobs),
-  include employer-created Cosmos jobs, then use the existing 70/30 match formula.
-  Return up to three jobs with nonzero skill coverage, per-skill evidence and
-  `meets_score_gate`. This flag is only the current numerical gate, not verified
-  qualifications or the planned critical-requirement feature.
-- Applying resolves a missing Cosmos job from Search and lazily normalizes it.
-  The recommendation itself never creates an application or assessment.
-- `GET /api/jobs/{job_id}` reads vacancy details from Cosmos or falls back to
-  Search without normalization or writes. The application page shows the original
-  description, available skill requirements, the score gate and next steps before
-  submission. A successful submission shows evidence and either the assessment
-  invitation or confirmation that the below-gate application remains for review.
+## Repository guide
 
+```text
+app/
+  api/          FastAPI routes
+  models/       Request, response and stored-document schemas
+  services/     AI, search, scoring, storage and application review
+  prompts/      Versioned model instructions
+frontend/       React interface and branding assets
+scripts/        Azure smoke checks and data import/preprocessing
+tests/         Backend tests
+docs/          Screenshots and preserved development brief
+```
 
-## 15. Out of scope
-
-Login and authentication, notifications, multiple employers, complex PDF parsing (plain text extraction is enough), assessment editing, proctoring, frontend tests.
-
-**Known limitations to mention in the pitch:** candidates could use AI to answer open questions; LLM grading of soft skills is approximate (mitigated with rubrics and visible reasoning); the EU AI Act classifies AI for recruitment as high-risk, which is why the tool keeps a human in the loop, explains scores, and logs decisions.
+[RUNNING.md](RUNNING.md) contains the operational setup guide. [docs/initial-brief.md](docs/initial-brief.md) preserves the previous development README, including its later additions; it describes historical intentions and is not the final specification.
