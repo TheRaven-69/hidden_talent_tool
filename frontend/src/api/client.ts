@@ -35,7 +35,6 @@ export interface ApplicationReview {
   assessment: Assessment | null;
   attempt_count: number;
 }
-export interface RankedCandidate { application: Application; assessment: Assessment | null }
 
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
@@ -62,5 +61,4 @@ export const api = {
   createAssessment: (applicationId: string) => post<Assessment>(`/assessments/${applicationId}`, {}),
   submitAssessment: (id: string, answers: Record<string, string>) =>
     post<Assessment>(`/assessments/${id}/submit`, { answers }),
-  rankedCandidates: (jobId: string) => http<RankedCandidate[]>(`/jobs/${jobId}/candidates`),
 };

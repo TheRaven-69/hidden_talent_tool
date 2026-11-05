@@ -35,7 +35,7 @@ export default function Applications() {
 
   const jobs = [...new Map(rows.map(row => [row.job.id, row.job.title])).entries()];
   const filtered = rows.filter(row => (!job || row.job.id === job) && (!status || stage(row) === status)
-    && `${row.application.full_name || ""} ${row.application.candidate_id} ${row.application.id} ${row.job.title}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+    && `${row.application.candidate_id} ${row.application.id} ${row.job.title}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   const completed = rows.filter(row => row.assessment_state === "completed").length;
 
   return <section className="applications-page">
@@ -55,7 +55,7 @@ export default function Applications() {
       <p className="applications-note">CV evidence and assessment results are shown separately. Scores support your review; hiring decisions remain yours.</p>
       {rows.length > 0 ? <>
         <div className="applications-filters">
-          <label>Search applications<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Name, candidate ID or job title" type="search" /></label>
+          <label>Search applications<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Candidate ID, application ID or job title" type="search" /></label>
           {!jobId && <label>Job<select value={job} onChange={e => setJob(e.target.value)}><option value="">All jobs</option>{jobs.map(([id, title]) => <option key={id} value={id}>{title}</option>)}</select></label>}
           <label>Status<select value={status} onChange={e => setStatus(e.target.value)}><option value="">All statuses</option>{["Applied", "Awaiting assessment", "Assessment in progress", "Assessment completed", "Below assessment minimum"].map(s => <option key={s}>{s}</option>)}</select></label>
         </div>
@@ -71,8 +71,7 @@ function ReviewCard({ row }: { row: ApplicationReview }) {
   const { application, assessment, cv_summary: cv } = row;
   const scored = assessment?.questions.filter(q => q.score != null) || [];
   return <article className="application-card">
-    <header className="application-card-heading"><div><h2>{application.full_name || application.candidate_id}</h2><p>{row.job.title}{!row.job.available && " · Job unavailable"}</p>
-      {application.full_name && <p className="applications-note">Candidate ID: {application.candidate_id}</p>}
+    <header className="application-card-heading"><div><h2>{application.candidate_id}</h2><p>{row.job.title}{!row.job.available && " · Job unavailable"}</p>
       <small>{application.id}{application.submitted_at && ` · Applied ${new Date(application.submitted_at).toLocaleString()}`}</small></div>
       <span className={`application-stage ${row.assessment_state === "completed" ? "is-complete" : ""}`}>{stage(row)}</span>
     </header>

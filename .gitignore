@@ -7,7 +7,6 @@ __pycache__/
 .pytest_cache/
 node_modules/
 frontend/dist/
-frontend/package-lock.json
 .ipynb_checkpoints/
 data/
 
